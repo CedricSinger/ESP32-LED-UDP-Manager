@@ -6,13 +6,7 @@
 #include <WiFiUdp.h>
 #include <AsyncUDP.h>
 #include <IPAddress.h>
-
-struct LEDData{
-    char led_mode;
-    float periodic_speed;
-    int brightness;
-    byte colors[2][3];
-};
+#include <util.h>
 
 struct dataWrap{
     char data[256];
@@ -25,14 +19,16 @@ struct colorWrap{
 
 class UDPManager {
     public:
-        void startUp(bool IS_RECEIVER, IPAddress IP_ADDRESSES[10], IPAddress& GATEWAY, IPAddress& SUBNET, unsigned int UDP_PORT, char NETWORK_SSID[], char NETWORK_PASSWORD[]);
+        void startUp(IPAddress IP_ADDRESSES[10], IPAddress& GATEWAY, IPAddress& SUBNET, unsigned int UDP_PORT, char NETWORK_SSID[], char NETWORK_PASSWORD[]);
+        void startUp(IPAddress& IP_ADDRESS, IPAddress& GATEWAY, IPAddress& SUBNET, unsigned int UDP_PORT, char NETWORK_SSID[], char NETWORK_PASSWORD[]);
         void sendOutPacket();
         void receivePacket(char* packetBuffer);
-        char getMode();
+        LEDMode getMode();
         float getSpeed();
         int getBrightness();
         colorWrap getColors();
-        void setMode(char mode);
+        LEDData getData();
+        void setMode(LEDMode mode);
         void setSpeed(float speed);
         void setBrightness(int brightness);
         void setColor1(byte color[3]);

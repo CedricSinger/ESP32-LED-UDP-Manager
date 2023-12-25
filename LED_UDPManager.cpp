@@ -7,10 +7,10 @@
 
 
 
-void UDPManager::startUp(bool IS_RECEIVER, IPAddress IP_ADDRESSES[10], IPAddress& GATEWAY, IPAddress& SUBNET, unsigned int UDP_PORT, char NETWORK_SSID[], char NETWORK_PASSWORD[]){
-    is_receiver = IS_RECEIVER;
+void UDPManager::startUp(IPAddress IP_ADDRESSES[10], IPAddress& GATEWAY, IPAddress& SUBNET, unsigned int UDP_PORT, char NETWORK_SSID[], char NETWORK_PASSWORD[]){
+    is_receiver = false;
 
-    data.led_mode = 0;
+    data.led_mode = OFF;
     data.periodic_speed = 100;
     data.brightness = 100;
     data.colors[0][0] = 0;
@@ -20,7 +20,7 @@ void UDPManager::startUp(bool IS_RECEIVER, IPAddress IP_ADDRESSES[10], IPAddress
     data.colors[1][1] = 0;
     data.colors[1][2] = 0;
 
-    offData.led_mode = 0;
+    offData.led_mode = OFF;
     offData.periodic_speed = 100;
     offData.brightness = 100;
     offData.colors[0][0] = 0;
@@ -38,25 +38,67 @@ void UDPManager::startUp(bool IS_RECEIVER, IPAddress IP_ADDRESSES[10], IPAddress
 
 
 
-    if(!IS_RECEIVER){
-        for(int i = 0; i < 10; i++){
-            active_units[i] = true;
-        }
 
-        own_ip = IP_ADDRESSES[0];
-        for(int i = 1; i < 10; i++){
-            if(IP_ADDRESSES[i] == IPAddress(0,0,0,0)){
-                active_units[i - 1] = false;
-            }
-            else{
-                receivers[i - 1] = IP_ADDRESSES[i];
-            }
-        }
-    }
-    else{
-        own_ip = IP_ADDRESSES[0];
+    for(int i = 0; i < 10; i++){
+        active_units[i] = true;
     }
 
+    own_ip = IP_ADDRESSES[0];
+    for(int i = 1; i < 10; i++){
+        if(IP_ADDRESSES[i] == IPAddress(0,0,0,0)){
+            active_units[i - 1] = false;
+        }
+        else{
+            receivers[i - 1] = IP_ADDRESSES[i];
+        }
+    }
+
+
+    
+    
+    WiFi.config(own_ip, gateway, subnet);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(NETWORK_SSID, NETWORK_PASSWORD);
+    Serial.print("Connecting to WiFi");
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println();
+    Serial.print("Connected, IP address: ");
+    Serial.println(WiFi.localIP());
+}
+
+void UDPManager::startUp(IPAddress& IP_ADDRESS, IPAddress& GATEWAY, IPAddress& SUBNET, unsigned int UDP_PORT, char NETWORK_SSID[], char NETWORK_PASSWORD[]){
+    is_receiver = true;
+
+    data.led_mode = OFF;
+    data.periodic_speed = 100;
+    data.brightness = 100;
+    data.colors[0][0] = 0;
+    data.colors[0][1] = 0;
+    data.colors[0][2] = 0;
+    data.colors[1][0] = 0;
+    data.colors[1][1] = 0;
+    data.colors[1][2] = 0;
+
+    offData.led_mode = OFF;
+    offData.periodic_speed = 100;
+    offData.brightness = 100;
+    offData.colors[0][0] = 0;
+    offData.colors[0][1] = 0;
+    offData.colors[0][2] = 0;
+    offData.colors[1][0] = 0;
+    offData.colors[1][1] = 0;
+    offData.colors[1][2] = 0;
+    
+    gateway = GATEWAY;
+    subnet = SUBNET;
+    ssid = NETWORK_SSID;
+    password = NETWORK_PASSWORD;
+    udp_port = UDP_PORT;
+    own_ip = IP_ADDRESS;
 
     
     
@@ -99,7 +141,7 @@ void UDPManager::receivePacket(char* packetBuffer){
 
 
 
-char UDPManager::getMode(){
+LEDMode UDPManager::getMode(){
     return data.led_mode;
 }
 
@@ -122,7 +164,11 @@ colorWrap UDPManager::getColors(){
     return result;
 }
 
-void UDPManager::setMode(char mode){
+LEDData UDPManager::getData(){
+    return data;
+}
+
+void UDPManager::setMode(LEDMode mode){
     data.led_mode = mode;
 }
 
@@ -174,8 +220,23 @@ dataWrap UDPManager::dataToChars(LEDData data){
         packet_data[3 * i + 11] = temp.charAt(2);
     }
 
-    temp = data.led_mode;
-    result[18] = temp.charAt(0);
+    switch(data.led_mode){
+        case OFF:{
+            result[18] = 0;
+        }
+        case ONECOLOR:{
+            result[18] = 1;
+        }
+        case WAVE:{
+            result[18] = 2;
+        }
+        case PULSE:{
+            result[18] = 3;
+        }
+        case RAINBOW:{
+            result[18] = 4;
+        }
+    }
 
     for(int i = 0; i < 3; i++){
         temp = String(data.periodic_speed);
@@ -222,7 +283,23 @@ LEDData UDPManager::charsToData(char* chars){
         result.colors[1][i] = temp.toInt();
     }
 
-    result.led_mode = chars[18];
+    switch(chars[18]){
+        case 0:{
+            result.led_mode = OFF;
+        }
+        case 1:{
+            result.led_mode = ONECOLOR;
+        }
+        case 2:{
+            result.led_mode = WAVE;
+        }
+        case 3:{
+            result.led_mode = PULSE;
+        }
+        case 4:{
+            result.led_mode = RAINBOW;
+        }
+    }
 
     temp = "000";
     for(int i = 19; i < 22; i++){
